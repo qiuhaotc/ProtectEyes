@@ -1,16 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Configuration;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
 namespace ProtectEyes
@@ -20,26 +12,60 @@ namespace ProtectEyes
     /// </summary>
     public partial class NotifyWindow : Window
     {
+        ProtectEyesViewModel protectEyesViewModel;
+
         public Rectangle Area { get; set; }
 
-        public NotifyWindow(Rectangle area)
+        public NotifyWindow(Rectangle area, ProtectEyesViewModel protectEyesViewModel)
         {
+            this.protectEyesViewModel = protectEyesViewModel;
             Area = area;
+            DataContext = new NotifyViewModel(this);
             InitializeComponent();
+        }
 
-            Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
+        protected override void OnContentRendered(EventArgs e)
+        {
+            base.OnContentRendered(e);
+            BaseViewModel.InvokeDispatcher(new Action(() =>
             {
                 var transform = PresentationSource.FromVisual(this).CompositionTarget.TransformFromDevice;
                 var corner = transform.Transform(new System.Windows.Point(Area.Right, Area.Bottom));
-
                 Left = corner.X - ActualWidth;
                 Top = corner.Y - ActualHeight;
-            }));
+            }), Dispatcher);
+            NotifyViewModel.StartCountTime();
+        }
+
+        NotifyViewModel NotifyViewModel => (NotifyViewModel)DataContext;
+
+        bool isClosed;
+
+        public void CloseForm(object state)
+        {
+            BaseViewModel.InvokeDispatcher(() => 
+            {
+                if (!isClosed)
+                {
+                    isClosed = true;
+                    Close();
+                }
+            }, Dispatcher);
         }
 
         void Button_Click(object sender, RoutedEventArgs e)
         {
-            Close();
+            if (!isClosed)
+            {
+                isClosed = true;
+                Close();
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            protectEyesViewModel?.NotifyClosed(this);
+            base.OnClosed(e);
         }
     }
 }

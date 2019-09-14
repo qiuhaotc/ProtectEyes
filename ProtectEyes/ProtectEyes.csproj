@@ -39,6 +39,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
@@ -60,9 +61,12 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="BaseViewModel.cs" />
+    <Compile Include="NotifyViewModel.cs" />
     <Compile Include="NotifyWindow.xaml.cs">
       <DependentUpon>NotifyWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="ProtectEyesViewModel.cs" />
     <Compile Include="Resource.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -120,6 +124,18 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\SunGlassesIco.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\BG3.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\BG1.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\BG2.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\BG4.jpg" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

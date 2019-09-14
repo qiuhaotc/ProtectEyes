@@ -16,13 +16,14 @@ namespace ProtectEyes
         public bool CanClose { get; private set; }
         public NotifyIcon NotifyIcon { get; private set; }
 
-        public List<NotifyWindow> NotifyWindows { get; set; } = new List<NotifyWindow>();
+        public ProtectEyesViewModel ProtectEyesModel => (ProtectEyesViewModel)DataContext;
 
         public MainWindow()
         {
             InitializeComponent();
             InitWindow();
             Hide();
+            DataContext = new ProtectEyesViewModel();
         }
 
         void InitWindow()
@@ -40,11 +41,11 @@ namespace ProtectEyes
             {
                 if (IsVisible)
                 {
-                    Show();
+                    Hide();
                 }
                 else
                 {
-                    Hide();
+                    Show();
                 }
             };
 
@@ -62,32 +63,16 @@ namespace ProtectEyes
             }
 
             Closing += MainWindow_Closing;
-
-            foreach (var scr in Screen.AllScreens)
-            {
-                var notifyWindow = new NotifyWindow(scr.WorkingArea);
-                notifyWindow.Show();
-                NotifyWindows.Add(notifyWindow);
-            }
         }
 
-        private void NotifyIcon_DoubleClick(object sender, EventArgs e)
+        void NotifyIcon_DoubleClick(object sender, EventArgs e)
         {
             throw new NotImplementedException();
         }
 
         void ExitApp()
         {
-            foreach (var window in NotifyWindows)
-            {
-                if (window.IsVisible)
-                {
-                    window.Close();
-                }
-            }
-
             NotifyIcon.Dispose();
-
             Environment.Exit(0);
         }
 
@@ -102,6 +87,11 @@ namespace ProtectEyes
             {
                 ExitApp();
             }
+        }
+
+        void Button_Click(object sender, RoutedEventArgs e)
+        {
+            ProtectEyesModel.SaveConfig();
         }
     }
 }
