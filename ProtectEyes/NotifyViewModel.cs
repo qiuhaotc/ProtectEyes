@@ -3,7 +3,7 @@ using System.Configuration;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-using System.Threading;
+using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
@@ -11,34 +11,48 @@ namespace ProtectEyes
 {
     public class NotifyViewModel : BaseViewModel
     {
-        public NotifyViewModel(NotifyWindow notifyWindow)
+        public NotifyViewModel(NotifyWindow notifyWindow, ProtectEyesViewModel protectEyesViewModel)
         {
+            this.protectEyesViewModel = protectEyesViewModel;
             this.notifyWindow = notifyWindow;
             RestPic = BitmapToBitmapImage(GetBG());
-            RestDesc = $"Please Take A Rest, Time Remain {TimeoutSeconds - timeTick}s";
+            SetRestDesc();
+            CloseAllNotifyWindowsCommand = new CommandHandler(CloseAllNotifyWindows, () => true);
         }
 
         public void StartCountTime()
         {
-            updateRestDesc = new Timer(new TimerCallback(UpdateRestDesc), null, (int)TimeSpan.FromSeconds(TimeoutSeconds).TotalMilliseconds, 500);
-            new Timer(new TimerCallback(notifyWindow.CloseForm), null, (int)TimeSpan.FromSeconds(TimeoutSeconds).TotalMilliseconds, Timeout.Infinite);
+            updateRestDesc = new DispatcherTimer();
+            updateRestDesc.Interval = TimeSpan.FromSeconds(1);
+            updateRestDesc.Tick += UpdateRestDesc;
+            updateRestDesc.Start();
+
+            GetDispatcherTimer(TimeSpan.FromSeconds(DisplayNotifySeconds), CloseForm);
         }
 
+        ProtectEyesViewModel protectEyesViewModel;
         NotifyWindow notifyWindow;
         int timeTick;
-        Timer updateRestDesc;
+        DispatcherTimer updateRestDesc;
 
-        void UpdateRestDesc(object state)
+        void UpdateRestDesc(object sender,EventArgs e)
         {
             timeTick++;
 
-            if (timeTick >= TimeoutSeconds)
+            if (timeTick >= DisplayNotifySeconds)
             {
-                updateRestDesc.Change(-1, -1);
+                updateRestDesc.Stop();
             }
 
-            RestDesc = $"Please Take A Rest, Time Remain {TimeoutSeconds - timeTick}s";
+            SetRestDesc();
         }
+
+        public void SetRestDesc()
+        {
+            RestDesc = $"Please Take A Rest, Times Remain: {DisplayNotifySeconds - timeTick}s";
+        }
+
+        string restDesc;
 
         public string RestDesc {
             get => restDesc;
@@ -48,6 +62,35 @@ namespace ProtectEyes
                 NotifyPropertyChange();
             }
         }
+
+        public ICommand CloseAllNotifyWindowsCommand { get; set; }
+
+        internal void CloseWithOutNotify()
+        {
+            notifyWindow.Close();
+        }
+
+        internal void CloseWithNotify()
+        {
+            notifyWindow.Close();
+            protectEyesViewModel.NotifyClosed(notifyWindow);
+        }
+
+        void CloseForm(object sender, EventArgs e)
+        {
+            CloseWithNotify();
+        }
+
+        void CloseAllNotifyWindows()
+        {
+            foreach (var item in protectEyesViewModel.NotifyWindows.ToArray())
+            {
+                item.NotifyViewModel.CloseWithNotify();
+            }
+        }
+
+
+        int DisplayNotifySeconds { get; } = int.Parse(ConfigurationManager.AppSettings["DisplayNotifySeconds"]);
 
         public BitmapImage RestPic { get; set; }
         public static BitmapImage BitmapToBitmapImage(Bitmap bitmap)
@@ -68,10 +111,8 @@ namespace ProtectEyes
                 return result;
             }
         }
-        int TimeoutSeconds => int.Parse(ConfigurationManager.AppSettings["DisplayNotifySeconds"]);
 
         static Bitmap[] bitmapImages = new[] { Resource.BG1, Resource.BG2, Resource.BG3, Resource.BG4 };
-        private string restDesc;
 
         static Bitmap GetBG()
         {

@@ -1,8 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
-using System.Threading;
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
 using System.Windows.Forms;
+using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace ProtectEyes
 {
@@ -10,13 +14,16 @@ namespace ProtectEyes
     {
         public ProtectEyesViewModel()
         {
-            shouldContinue = true;
             Duration = int.Parse(ConfigurationManager.AppSettings["RunBetween"]);
-            StartDurationIfNeeded();
+            DisplayNotifySeconds = int.Parse(ConfigurationManager.AppSettings["DisplayNotifySeconds"]);
+            SaveConfigCommand = new CommandHandler(SaveConfig, () => true);
+            ShouldContinue = true;
+            autoStart = bool.Parse(ConfigurationManager.AppSettings["AutoStart"]);
         }
 
         int duration;
         public string DurationDesc => $"Duration: {Duration} minutes";
+        public string StatusDesc => $"Status: Is Running {ShouldContinue}";
 
         public int Duration
         {
@@ -34,7 +41,46 @@ namespace ProtectEyes
             {
                 foreach (var notifyWindow in NotifyWindows)
                 {
-                    InvokeDispatcher(() => { notifyWindow.Show(); }, notifyWindow.Dispatcher);
+                    notifyWindow.Show();
+                }
+            }
+        }
+
+        int displayNotifySeconds;
+        public int DisplayNotifySeconds
+        {
+            get => displayNotifySeconds;
+            set
+            {
+                displayNotifySeconds = value;
+                NotifyPropertyChange(nameof(DisplayNotifySecondsDesc));
+            }
+        }
+
+        public string DisplayNotifySecondsDesc => $"Notifycation Display Seconds: {DisplayNotifySeconds}s";
+        public bool AutoStart
+        {
+            get => autoStart;
+            set
+            {
+                autoStart = value;
+
+                var appPath = Assembly.GetExecutingAssembly().Location;
+                var path = Path.Combine(new FileInfo(appPath).DirectoryName, "ChangeRegistry.exe");
+
+                try
+                {
+                    using (var process = Process.Start(new ProcessStartInfo(path, $"{autoStart} Protect_Eyes {appPath}")
+                    {
+                        Verb = "runas"
+                    }))
+                    {
+                        process?.WaitForExit();
+                        SetConfigValue("AutoStart", autoStart.ToString());
+                    }
+                }
+                catch
+                {
                 }
             }
         }
@@ -47,14 +93,19 @@ namespace ProtectEyes
             {
                 shouldContinue = value;
                 StartDurationIfNeeded();
+                NotifyPropertyChange(nameof(StatusDesc));
             }
         }
         public List<NotifyWindow> NotifyWindows { get; private set; } = new List<NotifyWindow>();
 
-        internal void SaveConfig()
+        public ICommand SaveConfigCommand { get; set; }
+
+        void SaveConfig()
         {
             ConfigurationManager.AppSettings["RunBetween"] = Duration.ToString();
+            ConfigurationManager.AppSettings["DisplayNotifySeconds"] = DisplayNotifySeconds.ToString();
             SetConfigValue("RunBetween", Duration.ToString());
+            SetConfigValue("DisplayNotifySeconds", DisplayNotifySeconds.ToString());
             StartDurationIfNeeded();
         }
 
@@ -82,20 +133,30 @@ namespace ProtectEyes
             }
         }
 
-        System.Threading.Timer threadTimer;
+        DispatcherTimer timer;
 
         void StartDurationIfNeeded()
         {
             if (ShouldContinue)
             {
-                if(threadTimer != null)
+                if (timer != null)
                 {
-                    threadTimer.Change(-1, -1);
+                    timer.Stop();
                 }
 
+                NotifyWindows.ForEach(u => { u.NotifyViewModel.CloseWithOutNotify(); });
                 NotifyWindows.Clear();
                 InitNotifyForm();
-                threadTimer = new System.Threading.Timer(new TimerCallback(ShowNotifyWindow), null, (int)TimeSpan.FromSeconds(Duration).TotalMilliseconds, Timeout.Infinite);
+                timer = GetDispatcherTimer(TimeSpan.FromMinutes(Duration), ShowNotifyWindow);
+            }
+            else
+            {
+                if (timer != null)
+                {
+                    timer.Stop();
+                }
+
+                NotifyWindows.ForEach(u => { u.NotifyViewModel.CloseWithOutNotify(); });
             }
         }
 
@@ -104,22 +165,29 @@ namespace ProtectEyes
             foreach (var scr in Screen.AllScreens)
             {
                 var notifyWindow = new NotifyWindow(scr.WorkingArea, this);
+                notifyWindow.Left = -100000; // Out side the window
                 NotifyWindows.Add(notifyWindow);
             }
         }
 
-        public void ShowNotifyWindow(object state)
+        public void ShowNotifyWindow(object sender, EventArgs e)
         {
             ShowNotifyWindows();
         }
 
+        static object syncLock = new object();
+        private bool autoStart;
+
         public void NotifyClosed(NotifyWindow notifyWindow)
         {
-            NotifyWindows.Remove(notifyWindow);
-
-            if (NotifyWindows.Count == 0)
+            lock (syncLock)
             {
-                StartDurationIfNeeded();
+                NotifyWindows.Remove(notifyWindow);
+
+                if (NotifyWindows.Count == 0)
+                {
+                    StartDurationIfNeeded();
+                }
             }
         }
     }

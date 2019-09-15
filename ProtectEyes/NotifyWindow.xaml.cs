@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Configuration;
 using System.Drawing;
-using System.Threading;
 using System.Windows;
-using System.Windows.Threading;
+using System.Windows.Media.Animation;
 
 namespace ProtectEyes
 {
@@ -20,52 +18,38 @@ namespace ProtectEyes
         {
             this.protectEyesViewModel = protectEyesViewModel;
             Area = area;
-            DataContext = new NotifyViewModel(this);
+            DataContext = new NotifyViewModel(this, protectEyesViewModel);
             InitializeComponent();
         }
 
         protected override void OnContentRendered(EventArgs e)
         {
             base.OnContentRendered(e);
-            BaseViewModel.InvokeDispatcher(new Action(() =>
-            {
-                var transform = PresentationSource.FromVisual(this).CompositionTarget.TransformFromDevice;
-                var corner = transform.Transform(new System.Windows.Point(Area.Right, Area.Bottom));
-                Left = corner.X - ActualWidth;
-                Top = corner.Y - ActualHeight;
-            }), Dispatcher);
+            var transform = PresentationSource.FromVisual(this).CompositionTarget.TransformFromDevice;
+            var corner = transform.Transform(new System.Windows.Point(Area.Right, Area.Bottom));
+            Left = corner.X - ActualWidth;
+            Top = corner.Y - ActualHeight;
+
             NotifyViewModel.StartCountTime();
         }
 
-        NotifyViewModel NotifyViewModel => (NotifyViewModel)DataContext;
-
-        bool isClosed;
-
-        public void CloseForm(object state)
-        {
-            BaseViewModel.InvokeDispatcher(() => 
-            {
-                if (!isClosed)
-                {
-                    isClosed = true;
-                    Close();
-                }
-            }, Dispatcher);
-        }
+        public NotifyViewModel NotifyViewModel => (NotifyViewModel)DataContext;
 
         void Button_Click(object sender, RoutedEventArgs e)
         {
-            if (!isClosed)
+            foreach (var item in protectEyesViewModel?.NotifyWindows)
             {
-                isClosed = true;
-                Close();
+                item.NotifyViewModel.CloseWithNotify();
             }
         }
 
-        protected override void OnClosed(EventArgs e)
+        void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            protectEyesViewModel?.NotifyClosed(this);
-            base.OnClosed(e);
+            Closing -= Window_Closing;
+            e.Cancel = true;
+            var anim = new DoubleAnimation(0, TimeSpan.FromSeconds(2));
+            anim.Completed += (s, _) => Close();
+            BeginAnimation(OpacityProperty, anim);
         }
     }
 }

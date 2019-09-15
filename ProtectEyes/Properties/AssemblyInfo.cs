@@ -7,11 +7,11 @@ using System.Windows;
 // 有关程序集的一般信息由以下
 // 控制。更改这些特性值可修改
 // 与程序集关联的信息。
-[assembly: AssemblyTitle("ProtectEyes")]
+[assembly: AssemblyTitle("Protect Eyes")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("ProtectEyes")]
+[assembly: AssemblyCompany("QiuHaoTC")]
+[assembly: AssemblyProduct("Protect Eyes")]
 [assembly: AssemblyCopyright("Copyright ©  2019")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]

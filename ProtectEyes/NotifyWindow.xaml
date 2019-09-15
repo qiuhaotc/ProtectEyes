@@ -9,10 +9,25 @@
         Topmost="True"
         WindowStyle="None"
         AllowsTransparency="True"
-        Title="Notify" Height="200" Width="300">
+        ShowInTaskbar="False"
+        Title="Notify"
+        Height="210"
+        Width="320"
+        Closing="Window_Closing">
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard>
+                <Storyboard>
+                    <DoubleAnimation Storyboard.TargetProperty="(Window.Opacity)"
+                                 From="0.0" To="1.0" Duration="0:0:2"
+                                 AutoReverse="False"/>
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </Window.Triggers>
     <Grid>
-        <Label  HorizontalAlignment="Left" Height="24" Content="{Binding RestDesc, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Top" Width="280" Background="#FF3FB7FF" Foreground="#FFECEAFA"/>
-        <Image HorizontalAlignment="Left" Height="172" Margin="0,24,0,0" Stretch="Fill" Source="{Binding RestPic}" VerticalAlignment="Top" Width="300"/>
-        <Button x:Name="CloseButton" x:FieldModifier="public" Content="×" HorizontalAlignment="Right" Margin="0,0,0,0" VerticalAlignment="Top" Width="30" Click="Button_Click" Background="#FFFF8198" Foreground="#FFF7F7F7" FontSize="16"/>
+        <Label  HorizontalAlignment="Left" Height="30" Content="{Binding RestDesc}" VerticalAlignment="Top" Width="290" Background="#FF43DAFF" Foreground="White" FontSize="14"/>
+        <Image Margin="0,30,0,0" Stretch="Fill" Source="{Binding RestPic}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+        <Button x:Name="CloseButton" x:FieldModifier="public" Content="×" HorizontalAlignment="Right" Margin="0,0,0,0" VerticalAlignment="Top" Width="30" Command="{Binding CloseAllNotifyWindowsCommand}" Background="#FFFF9E9E" Foreground="#FFF7F7F7" FontSize="22" Height="30"/>
     </Grid>
 </Window>

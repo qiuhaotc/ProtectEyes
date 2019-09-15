@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Forms;
@@ -13,7 +13,6 @@ namespace ProtectEyes
     public partial class MainWindow : Window
     {
         public MenuItem[] AreaMenuItems { get; private set; }
-        public bool CanClose { get; private set; }
         public NotifyIcon NotifyIcon { get; private set; }
 
         public ProtectEyesViewModel ProtectEyesModel => (ProtectEyesViewModel)DataContext;
@@ -29,7 +28,7 @@ namespace ProtectEyes
         void InitWindow()
         {
             NotifyIcon = new NotifyIcon();
-            NotifyIcon.Text = "Protect Eye";
+            NotifyIcon.Text = "Protect Eyes";
             if (!DesignerProperties.GetIsInDesignMode(this))
             {
                 NotifyIcon.Icon = Resource.SunGlasses;
@@ -46,6 +45,7 @@ namespace ProtectEyes
                 else
                 {
                     Show();
+                    Activate();
                 }
             };
 
@@ -78,20 +78,19 @@ namespace ProtectEyes
 
         void MainWindow_Closing(object sender, CancelEventArgs e)
         {
-            if (!CanClose)
-            {
-                Hide();
-                e.Cancel = true;
-            }
-            else
-            {
-                ExitApp();
-            }
+            Hide();
+            e.Cancel = true;
         }
 
         void Button_Click(object sender, RoutedEventArgs e)
         {
-            ProtectEyesModel.SaveConfig();
+            ExitApp();
+        }
+
+        void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+        {
+            Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri));
+            e.Handled = true;
         }
     }
 }

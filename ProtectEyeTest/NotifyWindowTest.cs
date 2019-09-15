@@ -1,8 +1,8 @@
-﻿using NUnit.Framework;
-using ProtectEyes;
-using System.Drawing;
+﻿using System.Drawing;
 using System.Windows;
 using System.Windows.Controls;
+using NUnit.Framework;
+using ProtectEyes;
 
 namespace ProtectEyeTest
 {

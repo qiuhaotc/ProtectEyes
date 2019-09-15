@@ -1,6 +1,6 @@
-﻿using NUnit.Framework;
+﻿using System.Windows.Forms;
+using NUnit.Framework;
 using ProtectEyes;
-using System.Windows.Forms;
 
 namespace ProtectEyeTest
 {
