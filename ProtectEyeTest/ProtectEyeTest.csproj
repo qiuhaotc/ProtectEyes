@@ -70,7 +70,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ProtectEyesViewModelTest.cs" />
-    <Compile Include="NotifyWindowTest.cs" />
+    <Compile Include="NotifyViewModelTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
