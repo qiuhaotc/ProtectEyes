@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.Versioning;
@@ -90,8 +91,31 @@ namespace ProtectEyes
 
         void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
         {
-            Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri));
-            e.Handled = true;
+            try
+            {
+                if (e.Uri is not null && (e.Uri.Scheme == Uri.UriSchemeHttp || e.Uri.Scheme == Uri.UriSchemeHttps))
+                {
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = e.Uri.AbsoluteUri,
+                        UseShellExecute = true, // 必须为 true 才能用默认浏览器打开 URL (.NET Core 默认是 false)
+                        Verb = "open"
+                    };
+                    Process.Start(psi);
+                }
+                else
+                {
+                    System.Windows.MessageBox.Show("链接格式不正确: " + e.Uri, "打开链接", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"无法打开链接: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                e.Handled = true;
+            }
         }
     }
 }
