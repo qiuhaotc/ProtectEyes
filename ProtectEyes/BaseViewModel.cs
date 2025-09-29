@@ -1,15 +1,14 @@
-﻿using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Windows.Threading;
+using System.Windows.Threading; // retained only for InvokeDispatcher
 
 namespace ProtectEyes
 {
     public class BaseViewModel : INotifyPropertyChanged
     {
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
-        public void NotifyPropertyChange([CallerMemberName]string memberName = null)
+        public void NotifyPropertyChange([CallerMemberName] string? memberName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(memberName));
         }
@@ -24,28 +23,6 @@ namespace ProtectEyes
             dispatcher?.BeginInvoke(dispatcherPriority, action);
         }
 
-        protected DispatcherTimer GetDispatcherTimer(TimeSpan interval, EventHandler tick, bool runOnceThenStop = true, bool autoStart = true)
-        {
-            var timer = new DispatcherTimer();
-            timer.Interval = interval;
-            timer.Tick += tick;
-
-            if (autoStart)
-            {
-                timer.Start();
-            }
-
-            if (runOnceThenStop)
-            {
-                timer.Tick += StopTimer;
-            }
-
-            return timer;
-        }
-
-        void StopTimer(object sender, EventArgs e)
-        {
-            (sender as DispatcherTimer)?.Stop();
-        }
+        // DispatcherTimer helper removed in favor of ITimer abstractions.
     }
 }

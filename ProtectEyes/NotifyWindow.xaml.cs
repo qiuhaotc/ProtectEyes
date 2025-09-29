@@ -1,5 +1,3 @@
-﻿using System;
-using System.Drawing;
 using System.Windows;
 using System.Windows.Media.Animation;
 
@@ -10,15 +8,15 @@ namespace ProtectEyes
     /// </summary>
     public partial class NotifyWindow : Window
     {
-        ProtectEyesViewModel protectEyesViewModel;
+        readonly ProtectEyesViewModel _protectEyesViewModel;
 
         public Rectangle Area { get; set; }
 
-        public NotifyWindow(Rectangle area, ProtectEyesViewModel protectEyesViewModel)
+        public NotifyWindow(Rectangle area, ProtectEyesViewModel protectEyesViewModel, ProtectEyes.Services.ITimer? closeTimer = null, ProtectEyes.Services.ITimer? tickTimer = null)
         {
-            this.protectEyesViewModel = protectEyesViewModel;
+            _protectEyesViewModel = protectEyesViewModel;
             Area = area;
-            DataContext = new NotifyViewModel(this, protectEyesViewModel);
+            DataContext = new NotifyViewModel(this, protectEyesViewModel, closeTimer, tickTimer);
             InitializeComponent();
         }
 
@@ -35,15 +33,16 @@ namespace ProtectEyes
 
         public NotifyViewModel NotifyViewModel => (NotifyViewModel)DataContext;
 
-        void Button_Click(object sender, RoutedEventArgs e)
+        void Button_Click(object? sender, RoutedEventArgs e)
         {
-            foreach (var item in protectEyesViewModel?.NotifyWindows)
+            var list = _protectEyesViewModel.NotifyWindows.ToArray();
+            foreach (var item in list)
             {
                 item.NotifyViewModel.CloseWithNotify();
             }
         }
 
-        void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
             Closing -= Window_Closing;
             e.Cancel = true;

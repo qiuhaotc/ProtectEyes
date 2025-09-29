@@ -1,12 +1,11 @@
-﻿using System;
 using System.Windows.Input;
 
 namespace ProtectEyes
 {
     public class CommandHandler : ICommand
     {
-        private Action _action;
-        private Func<bool> _canExecute;
+        readonly Action _action;
+        readonly Func<bool> _canExecute;
 
         /// <summary>
         /// Creates instance of the command handler
@@ -22,7 +21,7 @@ namespace ProtectEyes
         /// <summary>
         /// Wires CanExecuteChanged event 
         /// </summary>
-        public event EventHandler CanExecuteChanged
+        public event EventHandler? CanExecuteChanged
         {
             add { CommandManager.RequerySuggested += value; }
             remove { CommandManager.RequerySuggested -= value; }
@@ -33,12 +32,12 @@ namespace ProtectEyes
         /// </summary>
         /// <param name="parameter"></param>
         /// <returns></returns>
-        public bool CanExecute(object parameter)
+        public bool CanExecute(object? parameter)
         {
             return _canExecute.Invoke();
         }
 
-        public void Execute(object parameter)
+        public void Execute(object? parameter)
         {
             _action();
         }

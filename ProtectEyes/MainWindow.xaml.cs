@@ -1,33 +1,32 @@
-﻿using System;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Linq;
+using System.Runtime.Versioning;
 using System.Windows;
-using System.Windows.Forms;
 
 namespace ProtectEyes
 {
     /// <summary>
     /// MainWindow.xaml 的交互逻辑
     /// </summary>
+    [SupportedOSPlatform("windows6.1")]
     public partial class MainWindow : Window
     {
-        public MenuItem[] AreaMenuItems { get; private set; }
-        public NotifyIcon NotifyIcon { get; private set; }
+        public ToolStripMenuItem[]? AreaMenuItems { get; private set; }
+        public NotifyIcon NotifyIcon { get; private set; } = new();
 
         public ProtectEyesViewModel ProtectEyesModel => (ProtectEyesViewModel)DataContext;
 
-        public MainWindow()
+        public MainWindow(ProtectEyesViewModel protectEyesViewModel)
         {
             InitializeComponent();
             InitWindow();
             Hide();
-            DataContext = new ProtectEyesViewModel();
+            DataContext = protectEyesViewModel;
         }
 
         void InitWindow()
         {
-            NotifyIcon = new NotifyIcon();
+            // already initialized via property initializer
             NotifyIcon.Text = "Protect Eyes";
             if (!DesignerProperties.GetIsInDesignMode(this))
             {
@@ -36,7 +35,7 @@ namespace ProtectEyes
 
             NotifyIcon.Visible = true;
 
-            NotifyIcon.DoubleClick += (sender, e) =>
+            NotifyIcon.DoubleClick += (_, _) =>
             {
                 if (IsVisible)
                 {
@@ -52,14 +51,16 @@ namespace ProtectEyes
 
             AreaMenuItems = new[]
             {
-                new MenuItem("Close", (sender, e)=>{
+                new ToolStripMenuItem("Close", null, (sender, e)=>{
                     ExitApp();
                 })
             };
 
-            if (AreaMenuItems != null && AreaMenuItems.Length > 0)
+            if (AreaMenuItems is { Length: > 0 })
             {
-                NotifyIcon.ContextMenu = new ContextMenu(AreaMenuItems.ToArray());
+                var cms = new ContextMenuStrip();
+                cms.Items.AddRange(AreaMenuItems);
+                NotifyIcon.ContextMenuStrip = cms;
             }
 
             Closing += MainWindow_Closing;
@@ -76,7 +77,7 @@ namespace ProtectEyes
             Environment.Exit(0);
         }
 
-        void MainWindow_Closing(object sender, CancelEventArgs e)
+        void MainWindow_Closing(object? sender, CancelEventArgs e)
         {
             Hide();
             e.Cancel = true;

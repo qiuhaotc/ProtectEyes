@@ -1,22 +1,23 @@
-﻿using System.Windows.Forms;
 using NUnit.Framework;
 using ProtectEyes;
 
 namespace ProtectEyeTest
 {
+    [System.Runtime.Versioning.SupportedOSPlatform("windows6.1")]
     public class ProtectEyesViewModelTest
     {
-        [Test, RequiresSTA]
+        [Test, Apartment(ApartmentState.STA)]
         public void TestShowNotifyWindows()
         {
-            var window = new MainWindow();
+            var protectEyesViewModel = new ProtectEyesViewModel();
+            var window = new MainWindow(protectEyesViewModel);
             window.Show();
             window.ProtectEyesModel.ShouldContinue = true;
-            Assert.AreEqual(Screen.AllScreens.Length, window.ProtectEyesModel.NotifyWindows.Count);
-            Assert.IsFalse(window.ProtectEyesModel.NotifyWindows[0].IsVisible);
+            Assert.That(window.ProtectEyesModel.NotifyWindows.Count, Is.EqualTo(Screen.AllScreens.Length));
+            Assert.That(window.ProtectEyesModel.NotifyWindows[0].IsVisible, Is.False);
 
             window.ProtectEyesModel.ShowNotifyWindows();
-            Assert.IsTrue(window.ProtectEyesModel.NotifyWindows[0].IsVisible);
+            Assert.That(window.ProtectEyesModel.NotifyWindows[0].IsVisible, Is.True);
         }
     }
 }

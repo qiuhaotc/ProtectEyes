@@ -7,8 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProtectEyes", "ProtectEyes\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProtectEyeTest", "ProtectEyeTest\ProtectEyeTest.csproj", "{203AD625-C513-464C-8040-ACC9533F8F31}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChangeRegistry", "ChangeRegistry\ChangeRegistry.csproj", "{2B4DE203-F22A-4B4B-8495-6ABDD031C476}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,10 +21,6 @@ Global
 		{203AD625-C513-464C-8040-ACC9533F8F31}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{203AD625-C513-464C-8040-ACC9533F8F31}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{203AD625-C513-464C-8040-ACC9533F8F31}.Release|Any CPU.Build.0 = Release|Any CPU
-		{2B4DE203-F22A-4B4B-8495-6ABDD031C476}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2B4DE203-F22A-4B4B-8495-6ABDD031C476}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2B4DE203-F22A-4B4B-8495-6ABDD031C476}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2B4DE203-F22A-4B4B-8495-6ABDD031C476}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

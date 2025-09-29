@@ -1,0 +1,50 @@
+root = true
+
+[*.cs]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+
+# Using 排序
+dotnet_sort_system_directives_first = true
+
+# 统一命名：以下划线开头的字段
+# private(或 internal)字段
+dotnet_naming_rule.private_fields_should_have_underscore_prefix.severity = warning
+dotnet_naming_rule.private_fields_should_have_underscore_prefix.symbols = private_fields
+dotnet_naming_rule.private_fields_should_have_underscore_prefix.style = underscore_prefix
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+# 由于之前移除了 private，这里匹配非 public/protected 的字段
+# Roslyn 无法直接表达 internal+不含 readonly 的全部情况，这里使用修饰符限制
+# 留下最常见: private, internal
+# 若需要更严格可后续补充 analyzers
+
+# 命名风格: 下划线前缀+camelCase
+dotnet_naming_style.underscore_prefix.required_prefix = _
+dotnet_naming_style.underscore_prefix.capitalization = camel_case
+
+# 属性 PascalCase
+# （默认遵循 IDE 规则，可不显式配置）
+
+# 最大行长度建议（不强制换行，只提示）
+dotnet_diagnostic.IDE0055.severity = warning
+max_line_length = 120
+
+# 新行规则
+csharp_new_line_before_open_brace = all
+csharp_new_line_between_members = true
+
+# 表达式主体偏好：仅简单成员
+dotnet_style_prefer_expression_bodied_methods = when_on_single_line:suggestion
+
+# var 使用策略
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+
+# using 内联(顶部)偏好
+csharp_using_directive_placement = outside_namespace:warning

@@ -1,36 +1,43 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Diagnostics;
-using System.IO;
 using System.Reflection;
-using System.Windows.Forms;
 using System.Windows.Input;
-using System.Windows.Threading;
+using ProtectEyes.Services;
 
 namespace ProtectEyes
 {
     public class ProtectEyesViewModel : BaseViewModel
     {
-        public ProtectEyesViewModel()
+        readonly IAppConfig _config;
+        readonly Services.ITimer _durationTimer;
+        readonly IAutoStartManager _autoStartManager;
+        static readonly object _syncLock = new object();
+
+        // backing fields (mutable state)
+        int _duration;
+        int _displayNotifySeconds;
+        bool _shouldContinue;
+        bool _autoStart;
+
+        public ProtectEyesViewModel(IAppConfig? config = null, Services.ITimer? timer = null, IAutoStartManager? autoStartManager = null)
         {
-            Duration = int.Parse(ConfigurationManager.AppSettings["RunBetween"]);
-            DisplayNotifySeconds = int.Parse(ConfigurationManager.AppSettings["DisplayNotifySeconds"]);
+            _config = config ?? new Services.JsonAppConfig();
+            _durationTimer = timer ?? new Services.DispatcherTimerAdapter();
+            _autoStartManager = autoStartManager ?? new Services.AutoStartManager();
+            Duration = _config.RunBetween;
+            DisplayNotifySeconds = _config.DisplayNotifySeconds;
+            _autoStart = _config.AutoStart;
             SaveConfigCommand = new CommandHandler(SaveConfig, () => true);
             ShouldContinue = true;
-            autoStart = bool.Parse(ConfigurationManager.AppSettings["AutoStart"]);
         }
 
-        int duration;
         public string DurationDesc => $"Duration: {Duration} minutes";
         public string StatusDesc => $"Status: Is Running {ShouldContinue}";
 
         public int Duration
         {
-            get => duration;
+            get => _duration;
             set
             {
-                duration = value;
+                _duration = value;
                 NotifyPropertyChange(nameof(DurationDesc));
             }
         }
@@ -46,13 +53,12 @@ namespace ProtectEyes
             }
         }
 
-        int displayNotifySeconds;
         public int DisplayNotifySeconds
         {
-            get => displayNotifySeconds;
+            get => _displayNotifySeconds;
             set
             {
-                displayNotifySeconds = value;
+                _displayNotifySeconds = value;
                 NotifyPropertyChange(nameof(DisplayNotifySecondsDesc));
             }
         }
@@ -60,38 +66,30 @@ namespace ProtectEyes
         public string DisplayNotifySecondsDesc => $"Notifycation Display Seconds: {DisplayNotifySeconds}s";
         public bool AutoStart
         {
-            get => autoStart;
+            get => _autoStart;
             set
             {
-                autoStart = value;
+                _autoStart = value;
 
                 var appPath = Assembly.GetExecutingAssembly().Location;
-                var path = Path.Combine(new FileInfo(appPath).DirectoryName, "ChangeRegistry.exe");
-
-                try
+                const string appName = "Protect_Eyes"; // Registry value name
+                bool ok = _autoStart
+                    ? _autoStartManager.Enable(appName, appPath)
+                    : _autoStartManager.Disable(appName);
+                if (ok)
                 {
-                    using (var process = Process.Start(new ProcessStartInfo(path, $"{autoStart} Protect_Eyes {appPath}")
-                    {
-                        Verb = "runas"
-                    }))
-                    {
-                        process?.WaitForExit();
-                        SetConfigValue("AutoStart", autoStart.ToString());
-                    }
-                }
-                catch
-                {
+                    _config.AutoStart = _autoStart;
+                    _config.Save();
                 }
             }
         }
 
-        bool shouldContinue;
         public bool ShouldContinue
         {
-            get => shouldContinue;
+            get => _shouldContinue;
             set
             {
-                shouldContinue = value;
+                _shouldContinue = value;
                 StartDurationIfNeeded();
                 NotifyPropertyChange(nameof(StatusDesc));
             }
@@ -102,59 +100,32 @@ namespace ProtectEyes
 
         void SaveConfig()
         {
-            ConfigurationManager.AppSettings["RunBetween"] = Duration.ToString();
-            ConfigurationManager.AppSettings["DisplayNotifySeconds"] = DisplayNotifySeconds.ToString();
-            SetConfigValue("RunBetween", Duration.ToString());
-            SetConfigValue("DisplayNotifySeconds", DisplayNotifySeconds.ToString());
+            _config.RunBetween = Duration;
+            _config.DisplayNotifySeconds = DisplayNotifySeconds;
+            _config.AutoStart = _autoStart;
+            _config.Save();
             StartDurationIfNeeded();
         }
 
-        public static bool SetConfigValue(string key, string value)
-        {
-            try
-            {
-                var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
-                if (config.AppSettings.Settings[key] != null)
-                {
-                    config.AppSettings.Settings[key].Value = value;
-                }
-                else
-                {
-                    config.AppSettings.Settings.Add(key, value);
-                }
+        // Legacy SetConfigValue removed; persisted via IAppConfig implementation.
 
-                config.Save(ConfigurationSaveMode.Modified);
-                ConfigurationManager.RefreshSection("appSettings");
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        DispatcherTimer timer;
+        Services.ITimer? _notifyCycleTimer;
 
         void StartDurationIfNeeded()
         {
             if (ShouldContinue)
             {
-                if (timer != null)
-                {
-                    timer.Stop();
-                }
+                _notifyCycleTimer?.Stop();
 
                 NotifyWindows.ForEach(u => { u.NotifyViewModel.CloseWithOutNotify(); });
                 NotifyWindows.Clear();
                 InitNotifyForm();
-                timer = GetDispatcherTimer(TimeSpan.FromMinutes(Duration), ShowNotifyWindow);
+                _notifyCycleTimer = _durationTimer; // reuse injected timer for cycle
+                _notifyCycleTimer.Start(TimeSpan.FromMinutes(Duration), () => ShowNotifyWindow(this, EventArgs.Empty));
             }
             else
             {
-                if (timer != null)
-                {
-                    timer.Stop();
-                }
+                _notifyCycleTimer?.Stop();
 
                 NotifyWindows.ForEach(u => { u.NotifyViewModel.CloseWithOutNotify(); });
             }
@@ -170,17 +141,15 @@ namespace ProtectEyes
             }
         }
 
-        public void ShowNotifyWindow(object sender, EventArgs e)
+        public void ShowNotifyWindow(object? sender, EventArgs e)
         {
             ShowNotifyWindows();
         }
 
-        static object syncLock = new object();
-        private bool autoStart;
 
         public void NotifyClosed(NotifyWindow notifyWindow)
         {
-            lock (syncLock)
+            lock (_syncLock)
             {
                 NotifyWindows.Remove(notifyWindow);
 
