@@ -36,13 +36,15 @@ jobs:
         run: dotnet build ProtectEyes/ProtectEyes.csproj --configuration Release --no-restore
       - name: Test
         id: tests
-        run: dotnet test ProtectEyeTest/ProtectEyeTest.csproj --no-build --verbosity normal
+        shell: pwsh
+        run: |
+          dotnet test ProtectEyeTest/ProtectEyeTest.csproj --no-build --verbosity normal
       - name: Publish (Only for tag & tests passed)
         if: steps.tests.outcome == 'success' && startsWith(github.ref, 'refs/tags/v')
         run: |
           dotnet publish ProtectEyes/ProtectEyes.csproj -c Release -o published /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true /p:SelfContained=false
           echo "Published files:" 
-          ls -al published
+          Get-ChildItem -Recurse -Force published | Select-Object FullName,Length,LastWriteTime
       - name: Upload published artifact
         if: steps.tests.outcome == 'success' && startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
