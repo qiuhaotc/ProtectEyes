@@ -21,11 +21,13 @@ public class JsonAppConfig : IAppConfig
         RunBetween = _section.GetValue<int?>("RunBetween") ?? 20;
         DisplayNotifySeconds = _section.GetValue<int?>("DisplayNotifySeconds") ?? 10;
         AutoStart = _section.GetValue<bool?>("AutoStart") ?? false;
+        LanguageMode = _section.GetValue<string>("LanguageMode") ?? "auto";
     }
 
     public int RunBetween { get; set; }
     public int DisplayNotifySeconds { get; set; }
     public bool AutoStart { get; set; }
+    public string LanguageMode { get; set; }
 
     public void Save()
     {
@@ -36,7 +38,8 @@ public class JsonAppConfig : IAppConfig
             {
                 RunBetween,
                 DisplayNotifySeconds,
-                AutoStart
+                AutoStart,
+                LanguageMode
             }
         }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(_filePath, json);

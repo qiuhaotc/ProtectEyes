@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:ProtectEyes"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:viewModels="clr-namespace:ProtectEyes.ViewModels"
         mc:Ignorable="d"
         WindowState="Normal"
         Topmost="True"
@@ -11,23 +12,77 @@
         AllowsTransparency="True"
         ShowInTaskbar="False"
         Title="Notify"
-        Height="210"
-        Width="320"
+        Height="250"
+        Width="400"
+        Background="Transparent"
+        BorderThickness="0"
+        ResizeMode="NoResize"
         Closing="Window_Closing">
+    
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <materialDesign:BundledTheme BaseTheme="Light" 
+                    PrimaryColor="Teal" SecondaryColor="Lime" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    
     <Window.Triggers>
         <EventTrigger RoutedEvent="Window.Loaded">
             <BeginStoryboard>
                 <Storyboard>
                     <DoubleAnimation Storyboard.TargetProperty="(Window.Opacity)"
-                                 From="0.0" To="1.0" Duration="0:0:2"
-                                 AutoReverse="False"/>
+                                     From="0.0" To="1.0" Duration="0:0:2"
+                                     AutoReverse="False"/>
                 </Storyboard>
             </BeginStoryboard>
         </EventTrigger>
     </Window.Triggers>
-    <Grid>
-        <Label  HorizontalAlignment="Left" Height="30" Content="{Binding RestDesc}" VerticalAlignment="Top" Width="290" Background="#FF43DAFF" Foreground="White" FontSize="14"/>
-        <Image Margin="0,30,0,0" Stretch="Fill" Source="{Binding RestPic}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
-        <Button x:Name="CloseButton" x:FieldModifier="public" Content="×" HorizontalAlignment="Right" Margin="0,0,0,0" VerticalAlignment="Top" Width="30" Command="{Binding CloseAllNotifyWindowsCommand}" Background="#FFFF9E9E" Foreground="#FFF7F7F7" FontSize="22" Height="30"/>
-    </Grid>
+    
+    <Border CornerRadius="8" Background="Transparent" SnapsToDevicePixels="True">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            
+            <!-- 标题栏 -->
+            <materialDesign:ColorZone Grid.Row="0" 
+                                     Mode="PrimaryMid" 
+                                     Padding="16,8"
+                                     CornerRadius="8,8,0,0">
+                <TextBlock Text="{Binding RestDesc}" 
+                           Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                           Foreground="White"
+                           FontSize="14"/>
+            </materialDesign:ColorZone>
+            
+            <!-- 图片区域 -->
+            <Image Grid.Row="1" 
+                   Margin="0"
+                   Stretch="UniformToFill" 
+                   Source="{Binding RestPic}"
+                   HorizontalAlignment="Stretch" 
+                   VerticalAlignment="Stretch"/>
+            
+            <!-- 关闭按钮 -->
+            <Button Grid.Row="0"
+                    x:Name="CloseButton"
+                    Content="×"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    Width="30" Height="30"
+                    Command="{Binding CloseWithOutNotifyCommand}"
+                    Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
+                    Background="#FFFF9E9E"
+                    Foreground="White"
+                    FontSize="22"
+                    Margin="0,4,4,0"
+                    Panel.ZIndex="1"/>
+            
+        </Grid>
+    </Border>
 </Window>

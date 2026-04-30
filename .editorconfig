@@ -23,10 +23,6 @@ dotnet_naming_symbols.private_fields.applicable_kinds = field
 # 留下最常见: private, internal
 # 若需要更严格可后续补充 analyzers
 
-# 命名风格: 下划线前缀+camelCase
-dotnet_naming_style.underscore_prefix.required_prefix = _
-dotnet_naming_style.underscore_prefix.capitalization = camel_case
-
 # 属性 PascalCase
 # （默认遵循 IDE 规则，可不显式配置）
 

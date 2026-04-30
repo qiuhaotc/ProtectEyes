@@ -1,6 +1,6 @@
 namespace ProtectEyeTest.TestHelpers;
 
-public class MockManualTimer : ProtectEyes.Services.ITimer
+public class MockManualTimer : ProtectEyes.Services.Interfaces.ITimerService
 {
     class Entry
     {
@@ -12,6 +12,8 @@ public class MockManualTimer : ProtectEyes.Services.ITimer
     }
     readonly List<Entry> _entries = new();
     TimeSpan _elapsed = TimeSpan.Zero;
+
+    public bool IsRunning => _entries.Any(e => e.Active);
 
     public void Start(TimeSpan interval, Action callback, bool repeating = false)
     {

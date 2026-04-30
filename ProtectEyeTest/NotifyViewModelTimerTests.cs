@@ -1,25 +1,24 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
-using ProtectEyes;
+using ProtectEyes.Services.Implementations;
+using ProtectEyes.ViewModels;
+using ProtectEyeTest.TestHelpers;
 
 namespace ProtectEyeTest;
 
 [TestFixture, System.Runtime.Versioning.SupportedOSPlatform("windows6.1"), Apartment(ApartmentState.STA)]
 public class NotifyViewModelTimerTests
 {
-    class DummyProtectEyesVM : ProtectEyesViewModel
-    {
-        public DummyProtectEyesVM() : base() { }
-    }
-
     [Test]
     public void Countdown_Text_Updates_And_AutoClose_Triggered()
     {
-        var mockTick = new TestHelpers.MockManualTimer();
-        var mockClose = new TestHelpers.MockManualTimer();
+        var mockTick = new MockManualTimer();
+        var mockClose = new MockManualTimer();
         bool closed = false;
-        var parent = new DummyProtectEyesVM();
-        parent.DisplayNotifySeconds = 3;
-        var vm = new NotifyViewModel(null, parent, mockClose, mockTick, () => closed = true);
+
+        var localization = new LocalizationService(new TestAppConfig());
+        var vm = new NotifyViewModel(mockClose, mockTick, localization, NullLogger<NotifyViewModel>.Instance);
+        vm.Configure(displayNotifySeconds: 3, onClosedOverride: () => closed = true);
 
         vm.StartCountTime();
         Assert.That(vm.RestDesc, Does.Contain("3"));

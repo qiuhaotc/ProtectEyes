@@ -3,119 +3,170 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Windows;
+using ProtectEyes.Services.Interfaces;
+using ProtectEyes.ViewModels;
 
-namespace ProtectEyes
+namespace ProtectEyes;
+
+/// <summary>
+/// MainWindow.xaml 的交互逻辑
+/// </summary>
+[SupportedOSPlatform("windows6.1")]
+public partial class MainWindow : Window
 {
-    /// <summary>
-    /// MainWindow.xaml 的交互逻辑
-    /// </summary>
-    [SupportedOSPlatform("windows6.1")]
-    public partial class MainWindow : Window
+    private readonly INotifyService _notifyService;
+    private readonly ILocalizationService _localizationService;
+    private bool _isExiting;
+
+    public ToolStripMenuItem[]? AreaMenuItems { get; private set; }
+    public NotifyIcon NotifyIcon { get; private set; } = new();
+
+    public MainViewModel MainViewModel => (MainViewModel)DataContext;
+
+    public MainWindow(
+        MainViewModel mainViewModel,
+        INotifyService notifyService,
+        ILocalizationService localizationService)
     {
-        public ToolStripMenuItem[]? AreaMenuItems { get; private set; }
-        public NotifyIcon NotifyIcon { get; private set; } = new();
+        _notifyService = notifyService;
+        _localizationService = localizationService;
+        _localizationService.LanguageChanged += (_, _) => UpdateTrayText();
 
-        public ProtectEyesViewModel ProtectEyesModel => (ProtectEyesViewModel)DataContext;
+        InitializeComponent();
+        InitWindow();
+        Hide();
+        DataContext = mainViewModel;
+    }
 
-        public MainWindow(ProtectEyesViewModel protectEyesViewModel)
+    void InitWindow()
+    {
+        // already initialized via property initializer
+        NotifyIcon.Text = "Protect Eyes";
+        if (!DesignerProperties.GetIsInDesignMode(this))
         {
-            InitializeComponent();
-            InitWindow();
-            Hide();
-            DataContext = protectEyesViewModel;
+            NotifyIcon.Icon = Resource.SunGlasses;
         }
 
-        void InitWindow()
+        NotifyIcon.Visible = true;
+
+        NotifyIcon.DoubleClick += (_, _) =>
         {
-            // already initialized via property initializer
-            NotifyIcon.Text = "Protect Eyes";
-            if (!DesignerProperties.GetIsInDesignMode(this))
+            if (IsVisible)
             {
-                NotifyIcon.Icon = Resource.SunGlasses;
+                Hide();
             }
-
-            NotifyIcon.Visible = true;
-
-            NotifyIcon.DoubleClick += (_, _) =>
+            else
             {
-                if (IsVisible)
-                {
-                    Hide();
-                }
-                else
-                {
-                    Show();
-                    Activate();
-                }
-            };
-
-
-            AreaMenuItems = new[]
-            {
-                new ToolStripMenuItem("Close", null, (sender, e)=>{
-                    ExitApp();
-                })
-            };
-
-            if (AreaMenuItems is { Length: > 0 })
-            {
-                var cms = new ContextMenuStrip();
-                cms.Items.AddRange(AreaMenuItems);
-                NotifyIcon.ContextMenuStrip = cms;
+                Show();
+                Activate();
             }
+        };
 
-            Closing += MainWindow_Closing;
+        AreaMenuItems = new[]
+        {
+            new ToolStripMenuItem(T("TrayClose"), null, (sender, e) =>
+            {
+                ExitApp();
+            })
+        };
+
+        if (AreaMenuItems is { Length: > 0 })
+        {
+            var cms = new ContextMenuStrip();
+            cms.Items.AddRange(AreaMenuItems);
+            NotifyIcon.ContextMenuStrip = cms;
         }
 
-        void NotifyIcon_DoubleClick(object sender, EventArgs e)
+        Closing += MainWindow_Closing;
+    }
+
+    void ExitApp()
+    {
+        if (_isExiting)
         {
-            throw new NotImplementedException();
+            return;
         }
 
-        void ExitApp()
+        var dispatcher = Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
         {
+            dispatcher.BeginInvoke(new Action(ExitApp));
+            return;
+        }
+
+        _isExiting = true;
+        Closing -= MainWindow_Closing;
+        _notifyService?.Stop();
+        if (NotifyIcon is not null)
+        {
+            NotifyIcon.Visible = false;
             NotifyIcon.Dispose();
-            Environment.Exit(0);
+        }
+        System.Windows.Application.Current?.Shutdown();
+    }
+
+    void MainWindow_Closing(object? sender, CancelEventArgs e)
+    {
+        if (_isExiting)
+        {
+            return;
         }
 
-        void MainWindow_Closing(object? sender, CancelEventArgs e)
-        {
-            Hide();
-            e.Cancel = true;
-        }
+        Hide();
+        e.Cancel = true;
+    }
 
-        void Button_Click(object sender, RoutedEventArgs e)
-        {
-            ExitApp();
-        }
+    void Button_Click(object sender, RoutedEventArgs e)
+    {
+        ExitApp();
+    }
 
-        void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+    void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+    {
+        try
         {
-            try
+            if (e.Uri is not null && (e.Uri.Scheme == Uri.UriSchemeHttp || e.Uri.Scheme == Uri.UriSchemeHttps))
             {
-                if (e.Uri is not null && (e.Uri.Scheme == Uri.UriSchemeHttp || e.Uri.Scheme == Uri.UriSchemeHttps))
+                var psi = new ProcessStartInfo
                 {
-                    var psi = new ProcessStartInfo
-                    {
-                        FileName = e.Uri.AbsoluteUri,
-                        UseShellExecute = true, // 必须为 true 才能用默认浏览器打开 URL (.NET Core 默认是 false)
-                        Verb = "open"
-                    };
-                    Process.Start(psi);
-                }
-                else
-                {
-                    System.Windows.MessageBox.Show("链接格式不正确: " + e.Uri, "打开链接", MessageBoxButton.OK, MessageBoxImage.Warning);
-                }
+                    FileName = e.Uri.AbsoluteUri,
+                    UseShellExecute = true,
+                    Verb = "open"
+                };
+                Process.Start(psi);
             }
-            catch (Exception ex)
+            else
             {
-                System.Windows.MessageBox.Show($"无法打开链接: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show(
+                    T("OpenLinkInvalidMessage", e.Uri?.ToString() ?? string.Empty),
+                    T("OpenLinkInvalidTitle"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
             }
-            finally
-            {
-                e.Handled = true;
-            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                T("OpenLinkErrorMessage", ex.Message),
+                T("OpenLinkErrorTitle"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        finally
+        {
+            e.Handled = true;
         }
     }
+
+    private void UpdateTrayText()
+    {
+        if (AreaMenuItems is { Length: > 0 })
+        {
+            AreaMenuItems[0].Text = T("TrayClose");
+        }
+    }
+
+    private string T(string key) => _localizationService.Translate(key);
+
+    private string T(string key, params object[] args) => _localizationService.Translate(key, args);
 }

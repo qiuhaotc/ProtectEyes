@@ -1,54 +1,67 @@
 using System.Windows;
 using System.Windows.Media.Animation;
+using ProtectEyes.ViewModels;
 
-namespace ProtectEyes
+namespace ProtectEyes;
+
+/// <summary>
+/// NotifyWindow.xaml 的交互逻辑
+/// </summary>
+public partial class NotifyWindow : Window
 {
-    /// <summary>
-    /// FullWindow.xaml 的交互逻辑
-    /// </summary>
-    public partial class NotifyWindow : Window
+    public Rectangle Area { get; set; }
+    public NotifyViewModel? NotifyViewModel { get; }
+
+    public NotifyWindow(Rectangle area, NotifyViewModel viewModel)
     {
-        readonly ProtectEyesViewModel _protectEyesViewModel;
+        Area = area;
+        InitializeComponent();
+        NotifyViewModel = viewModel;
+        DataContext = viewModel;
+        viewModel.RequestClose += OnRequestClose;
+    }
 
-        public Rectangle Area { get; set; }
+    protected override void OnContentRendered(EventArgs e)
+    {
+        base.OnContentRendered(e);
 
-        public NotifyWindow(Rectangle area, ProtectEyesViewModel protectEyesViewModel, ProtectEyes.Services.ITimer? closeTimer = null, ProtectEyes.Services.ITimer? tickTimer = null)
+        var source = PresentationSource.FromVisual(this);
+        if (source?.CompositionTarget is { } target)
         {
-            _protectEyesViewModel = protectEyesViewModel;
-            Area = area;
-            DataContext = new NotifyViewModel(this, protectEyesViewModel, closeTimer, tickTimer);
-            InitializeComponent();
-        }
-
-        protected override void OnContentRendered(EventArgs e)
-        {
-            base.OnContentRendered(e);
-            var transform = PresentationSource.FromVisual(this).CompositionTarget.TransformFromDevice;
+            var transform = target.TransformFromDevice;
             var corner = transform.Transform(new System.Windows.Point(Area.Right, Area.Bottom));
             Left = corner.X - ActualWidth;
             Top = corner.Y - ActualHeight;
-
-            NotifyViewModel.StartCountTime();
         }
 
-        public NotifyViewModel NotifyViewModel => (NotifyViewModel)DataContext;
+        NotifyViewModel?.StartCountTime();
+    }
 
-        void Button_Click(object? sender, RoutedEventArgs e)
+    private void OnRequestClose()
+    {
+        if (Dispatcher.CheckAccess())
         {
-            var list = _protectEyesViewModel.NotifyWindows.ToArray();
-            foreach (var item in list)
+            Close();
+        }
+        else
+        {
+            Dispatcher.BeginInvoke(new Action(Close));
+        }
+    }
+
+    void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        Closing -= Window_Closing;
+        e.Cancel = true;
+        var anim = new DoubleAnimation(0, TimeSpan.FromSeconds(2));
+        anim.Completed += (_, _) =>
+        {
+            if (NotifyViewModel is { } vm)
             {
-                item.NotifyViewModel.CloseWithNotify();
+                vm.RequestClose -= OnRequestClose;
             }
-        }
-
-        void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
-        {
-            Closing -= Window_Closing;
-            e.Cancel = true;
-            var anim = new DoubleAnimation(0, TimeSpan.FromSeconds(2));
-            anim.Completed += (s, _) => Close();
-            BeginAnimation(OpacityProperty, anim);
-        }
+            Close();
+        };
+        BeginAnimation(OpacityProperty, anim);
     }
 }

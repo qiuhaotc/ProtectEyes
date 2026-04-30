@@ -1,21 +1,21 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
-using ProtectEyes;
+using ProtectEyes.Services.Implementations;
+using ProtectEyes.ViewModels;
+using ProtectEyeTest.TestHelpers;
 
-namespace ProtectEyeTest
+namespace ProtectEyeTest;
+
+[System.Runtime.Versioning.SupportedOSPlatform("windows6.1")]
+public class NotifyViewModelTest
 {
-    [System.Runtime.Versioning.SupportedOSPlatform("windows6.1")]
-    public class NotifyViewModelTest
+    [Test, Apartment(ApartmentState.STA)]
+    public void Configure_Sets_Initial_RestDesc()
     {
-        [Test, Apartment(ApartmentState.STA)]
-        public void TestSetRestDesc()
-        {
-            var vm = new ProtectEyesViewModel();
-            var rect = System.Windows.Forms.Screen.PrimaryScreen!.WorkingArea;
-            var notifyWindow = new NotifyWindow(rect, vm);
-            var notifyModel = notifyWindow.NotifyViewModel;
-            notifyModel.SetRestDesc();
-            var expected = $"Please Take A Rest, Times Remain: {vm.DisplayNotifySeconds}s";
-            Assert.That(notifyModel.RestDesc, Is.EqualTo(expected));
-        }
+        var localization = new LocalizationService(new TestAppConfig());
+        var vm = new NotifyViewModel(new MockManualTimer(), new MockManualTimer(), localization, NullLogger<NotifyViewModel>.Instance);
+        vm.Configure(displayNotifySeconds: 12);
+
+        Assert.That(vm.RestDesc, Is.EqualTo("Please take a rest. Time remaining: 12s"));
     }
 }

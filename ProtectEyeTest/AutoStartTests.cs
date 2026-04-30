@@ -1,83 +1,91 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
-using ProtectEyes;
 using ProtectEyes.Services;
+using ProtectEyes.Services.Implementations;
+using ProtectEyes.Services.Interfaces;
+using ProtectEyes.ViewModels;
 
-namespace ProtectEyeTest
+namespace ProtectEyeTest;
+
+[TestFixture, Apartment(ApartmentState.STA)]
+public class AutoStartTests
 {
-    [TestFixture, Apartment(ApartmentState.STA)]
-    public class AutoStartTests
+    class FakeAppConfig : IAppConfig
     {
-        class FakeAppConfig : IAppConfig
+        public int RunBetween { get; set; } = 20;
+        public int DisplayNotifySeconds { get; set; } = 10;
+        public bool AutoStart { get; set; } = false;
+        public string LanguageMode { get; set; } = "en-US";
+        public bool Saved { get; private set; }
+        public void Save() => Saved = true;
+    }
+
+    class FakeAutoStartService : IAutoStartService
+    {
+        public int EnableCalls { get; private set; }
+        public int DisableCalls { get; private set; }
+        public bool ResultToReturn { get; set; } = true;
+        public string? LastAppName { get; private set; }
+        public string? LastExePath { get; private set; }
+
+        public bool Enable(string appName, string appPath)
         {
-            public int RunBetween { get; set; } = 20;
-            public int DisplayNotifySeconds { get; set; } = 10;
-            public bool AutoStart { get; set; } = false;
-            public bool Saved { get; private set; }
-            public void Save() => Saved = true;
+            EnableCalls++;
+            LastAppName = appName;
+            LastExePath = appPath;
+            return ResultToReturn;
         }
 
-        class FakeAutoStartManager : IAutoStartManager
+        public bool Disable(string appName)
         {
-            public int EnableCalls { get; private set; }
-            public int DisableCalls { get; private set; }
-            public bool ResultToReturn { get; set; } = true;
-            public string? LastAppName { get; private set; }
-            public string? LastExePath { get; private set; }
-
-            public bool Enable(string appName, string exePath)
-            {
-                EnableCalls++;
-                LastAppName = appName;
-                LastExePath = exePath;
-                return ResultToReturn;
-            }
-
-            public bool Disable(string appName)
-            {
-                DisableCalls++;
-                LastAppName = appName;
-                return ResultToReturn;
-            }
-
-            public bool IsEnabled(string appName) => false;
+            DisableCalls++;
+            LastAppName = appName;
+            return ResultToReturn;
         }
 
-        [Test]
-        public void AutoStart_Enable_Disable_UpdatesConfigOnSuccess()
+        public bool IsEnabled(string appName) => false;
+    }
+
+    class NoopNotifyService : INotifyService
+    {
+        public bool IsRunning => false;
+        public void Start(int durationMinutes, int displayNotifySeconds) { }
+        public void Stop() { }
+        public void TriggerNow(int durationMinutes, int displayNotifySeconds) { }
+    }
+
+    [Test]
+    public void SaveConfig_Enable_PersistsAndCallsAutoStart()
+    {
+        var cfg = new FakeAppConfig();
+        var auto = new FakeAutoStartService();
+        var vm = new MainViewModel(cfg, new NoopNotifyService(), auto, new LocalizationService(cfg), NullLogger<MainViewModel>.Instance)
         {
-            var cfg = new FakeAppConfig { AutoStart = false };
-            var auto = new FakeAutoStartManager { ResultToReturn = true };
-            var vm = new ProtectEyesViewModel(cfg, null, auto);
+            AutoStart = true
+        };
 
-            Assert.That(cfg.AutoStart, Is.False);
-            vm.AutoStart = true;
-            Assert.That(auto.EnableCalls, Is.EqualTo(1));
-            Assert.That(cfg.AutoStart, Is.True, "Config should update to true when enable succeeds");
-            Assert.That(auto.LastAppName, Is.EqualTo("Protect_Eyes"));
-            Assert.That(string.IsNullOrWhiteSpace(auto.LastExePath), Is.False);
-            Assert.That(auto.LastExePath, Does.Contain("ProtectEyes"));
+        vm.SaveConfigCommand.Execute(null);
 
-            vm.AutoStart = false;
-            Assert.That(auto.DisableCalls, Is.EqualTo(1));
-            Assert.That(cfg.AutoStart, Is.False, "Config should update to false when disable succeeds");
-        }
+        Assert.That(auto.EnableCalls, Is.EqualTo(1));
+        Assert.That(cfg.AutoStart, Is.True);
+        Assert.That(cfg.Saved, Is.True);
+        Assert.That(auto.LastAppName, Is.EqualTo("Protect_Eyes"));
+        Assert.That(string.IsNullOrWhiteSpace(auto.LastExePath), Is.False);
+    }
 
-        [Test]
-        public void AutoStart_NotUpdated_WhenManagerFails()
+    [Test]
+    public void SaveConfig_Disable_CallsAutoStartDisable()
+    {
+        var cfg = new FakeAppConfig { AutoStart = true };
+        var auto = new FakeAutoStartService();
+        var vm = new MainViewModel(cfg, new NoopNotifyService(), auto, new LocalizationService(cfg), NullLogger<MainViewModel>.Instance)
         {
-            var cfg = new FakeAppConfig { AutoStart = false };
-            var auto = new FakeAutoStartManager { ResultToReturn = false };
-            var vm = new ProtectEyesViewModel(cfg, null, auto);
+            AutoStart = false
+        };
 
-            vm.AutoStart = true; // fails
-            Assert.That(auto.EnableCalls, Is.EqualTo(1));
-            Assert.That(cfg.AutoStart, Is.False, "Config should remain unchanged when enable fails");
+        vm.SaveConfigCommand.Execute(null);
 
-            cfg.AutoStart = true; // simulate external change
-            auto.ResultToReturn = false;
-            vm.AutoStart = false; // disable attempt fails
-            Assert.That(auto.DisableCalls, Is.EqualTo(1));
-            Assert.That(cfg.AutoStart, Is.True, "Config should remain true because disable failed");
-        }
+        Assert.That(auto.DisableCalls, Is.EqualTo(1));
+        Assert.That(cfg.AutoStart, Is.False);
     }
 }

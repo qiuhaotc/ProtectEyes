@@ -1,86 +1,68 @@
 using System.Runtime.Versioning;
 using System.Windows;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using ProtectEyes.Services;
+using ProtectEyes.Infrastructure;
 
-namespace ProtectEyes
+namespace ProtectEyes;
+
+/// <summary>
+/// App.xaml 的交互逻辑
+/// </summary>
+public partial class App : System.Windows.Application
 {
-    /// <summary>
-    /// App.xaml 的交互逻辑
-    /// </summary>
-    public partial class App : System.Windows.Application
+    static Mutex? _singleInstanceMutex; // 防止多实例产生两个托盘图标
+
+    [SupportedOSPlatform("windows6.1")]
+    protected override void OnStartup(StartupEventArgs e)
     {
-        public static IHost? HostInstance { get; private set; }
-        static Mutex? _singleInstanceMutex; // 防止多实例产生两个托盘图标
+        base.OnStartup(e);
 
-        [SupportedOSPlatform("windows6.1")]
-        protected override void OnStartup(StartupEventArgs e)
+        // 单实例检测
+        bool createdNew = false;
+        try
         {
-            base.OnStartup(e);
-            // 单实例检测
-            bool createdNew = false;
-            try
-            {
-                _singleInstanceMutex = new Mutex(initiallyOwned: true, name: "Global/ProtectEyes.SingleInstance", createdNew: out createdNew);
-            }
-            catch
-            {
-                createdNew = false;
-            }
-            if (!createdNew)
-            {
-                // 已有实例，直接退出避免第二个托盘图标
-                Shutdown();
-                return;
-            }
-
-            // 进程结束兜底释放托盘图标，防止残留影子图标
-            AppDomain.CurrentDomain.ProcessExit += (_, _) => SafeDisposeNotifyIcon();
-            AppDomain.CurrentDomain.UnhandledException += (_, _) => SafeDisposeNotifyIcon();
-            HostInstance = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
-                .ConfigureServices(services =>
-                {
-                    services.AddSingleton<IAppConfig, JsonAppConfig>();
-                    services.AddTransient<ProtectEyes.Services.ITimer, DispatcherTimerAdapter>();
-                    services.AddSingleton<IAutoStartManager, AutoStartManager>();
-                    services.AddSingleton<ProtectEyesViewModel>();
-                    services.AddSingleton<MainWindow>();
-                })
-                .Build();
-
-            _main = HostInstance.Services.GetRequiredService<MainWindow>();
-            // _main.Hide(); // 仅显示托盘
+            _singleInstanceMutex = new Mutex(initiallyOwned: true, name: "Global/ProtectEyes.SingleInstance", createdNew: out createdNew);
+        }
+        catch
+        {
+            createdNew = false;
         }
 
-        MainWindow? _main;
-
-        protected override async void OnExit(ExitEventArgs e)
+        if (!createdNew)
         {
-            SafeDisposeNotifyIcon();
-            _singleInstanceMutex?.ReleaseMutex();
-            if (HostInstance is IAsyncDisposable asyncDisp)
-            {
-                await asyncDisp.DisposeAsync();
-            }
-            else
-            {
-                HostInstance?.Dispose();
-            }
-            base.OnExit(e);
+            // 已有实例，直接退出避免第二个托盘图标
+            Shutdown();
+            return;
         }
 
-        static void SafeDisposeNotifyIcon()
+        // 进程结束兜底释放托盘图标，防止残留影子图标
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => SafeDisposeNotifyIcon();
+        AppDomain.CurrentDomain.UnhandledException += (_, _) => SafeDisposeNotifyIcon();
+
+        // 配置依赖注入
+        AppHost.ConfigureServices();
+
+        // 获取主窗口并显示
+        var mainWindow = AppHost.GetService<MainWindow>();
+        mainWindow.Show();
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        SafeDisposeNotifyIcon();
+        _singleInstanceMutex?.ReleaseMutex();
+        base.OnExit(e);
+    }
+
+    static void SafeDisposeNotifyIcon()
+    {
+        try
         {
-            try
+            if (OperatingSystem.IsWindowsVersionAtLeast(6, 1))
             {
-                if (OperatingSystem.IsWindowsVersionAtLeast(6, 1))
-                {
-                    var main = HostInstance?.Services.GetService<MainWindow>();
-                    main?.NotifyIcon?.Dispose();
-                }
+                var mainWindow = Current?.MainWindow as MainWindow;
+                mainWindow?.NotifyIcon?.Dispose();
             }
-            catch { /* 忽略释放异常 */ }
         }
+        catch { /* 忽略释放异常 */ }
     }
 }
